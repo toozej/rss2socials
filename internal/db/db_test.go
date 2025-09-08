@@ -10,7 +10,7 @@ func TestInitDB(t *testing.T) {
 	InitDB()
 	defer CloseDB()
 
-	_, err := db.Exec("SELECT 1")
+	_, err := DB.Exec("SELECT 1")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}

@@ -1,7 +1,7 @@
 ---
 version: 2
 
-project_name: rss2mastodon
+project_name: rss2socials
 
 env:
   - GO111MODULE=on
@@ -33,6 +33,9 @@ builds:
       - arm64
     goarm:
       - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath
@@ -40,7 +43,7 @@ builds:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate
         }} -X main.builtBy=goreleaser
     main: ./
-    binary: rss2mastodon
+    binary: rss2socials
 
 universal_binaries:
   - replace: false
@@ -76,142 +79,50 @@ changelog:
     - title: Other work
       order: 9999
 
-dockers:
-  - image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
+dockers_v2:
+  - id: rss2socials
+    images:
+      - 'toozej/rss2socials'
+      - 'ghcr.io/toozej/rss2socials'
+      - 'quay.io/toozej/rss2socials'
+    tags:
+      - "v{{ .Version }}"
+      - "{{ .Version }}"
+      - "latest"
+      - "v{{ .Version }}-distroless"
+      - "{{ .Version }}-distroless"
+      - "distroless"
     dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/rss2mastodon/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
+    labels:
+      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/toozej/rss2socials/main/README.md"
+      "io.artifacthub.package.maintainers": "[{\"name\":\"toozej\"}]"
+      "io.artifacthub.package.license": "GPLv3"
+      "org.opencontainers.image.description": "Watches a RSS feed for new posts, then announces\
+        \ them on Mastodon"
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+      "org.opencontainers.image.authors": "James Tooze https://github.com/toozej/"
+      "org.opencontainers.image.documentation": "https://raw.githubusercontent.com/toozej/rss2socials/main/README.md"
+      "org.opencontainers.image.licenses": "GPL-3.0-only"
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.vendor": "James Tooze"
+    annotations:
+      "index,manifest:org.opencontainers.image.authors": "James Tooze https://github.com/toozej/"
+      "index,manifest:org.opencontainers.image.created": "{{.Date}}"
+      "index,manifest:org.opencontainers.image.description": "Watches a RSS feed for new posts,\
+        \ then announces them on Mastodon"
+      "index,manifest:org.opencontainers.image.documentation": "https://raw.githubusercontent.com/toozej/rss2socials/main/README.md"
+      "index,manifest:org.opencontainers.image.licenses": "GPL-3.0-only"
+      "index,manifest:org.opencontainers.image.revision": "{{.FullCommit}}"
+      "index,manifest:org.opencontainers.image.source": "https://github.com/toozej/rss2socials"
+      "index,manifest:org.opencontainers.image.title": "{{.ProjectName}}"
+      "index,manifest:org.opencontainers.image.vendor": "James Tooze"
+      "index,manifest:org.opencontainers.image.version": "{{.Version}}"
     extra_files:
       - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-arm64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-    dockerfile: Dockerfile.goreleaser
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/rss2mastodon/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-    dockerfile: Dockerfile.goreleaser.distroless
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/rss2mastodon/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-    dockerfile: Dockerfile.goreleaser.distroless
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/rss2mastodon/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
-
-docker_manifests:
-  # tagged
-  - name_template: 'toozej/rss2mastodon:{{ .Tag }}'
-    image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'toozej/rss2mastodon:{{ .Tag }}-arm64'
-  - name_template: 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}'
-    image_templates:
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-  - name_template: 'quay.io/toozej/rss2mastodon:{{ .Tag }}'
-    image_templates:
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-  - name_template: 'toozej/rss2mastodon:{{ .Tag }}-distroless'
-    image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-  - name_template: 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless'
-    image_templates:
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-  - name_template: 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless'
-    image_templates:
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-  # latest
-  - name_template: 'toozej/rss2mastodon:latest'
-    image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'toozej/rss2mastodon:{{ .Tag }}-arm64'
-  - name_template: 'ghcr.io/toozej/rss2mastodon:latest'
-    image_templates:
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-  - name_template: 'quay.io/toozej/rss2mastodon:latest'
-    image_templates:
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-arm64'
-  # distroless
-  - name_template: 'toozej/rss2mastodon:distroless'
-    image_templates:
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-  - name_template: 'ghcr.io/toozej/rss2mastodon:distroless'
-    image_templates:
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
-  - name_template: 'quay.io/toozej/rss2mastodon:distroless'
-    image_templates:
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/rss2mastodon:{{ .Tag }}-distroless-arm64'
 
 archives:
   - name_template: >-
@@ -222,7 +133,7 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
     files:
       - README.md
       - LICENSE
@@ -232,33 +143,33 @@ archives:
 nfpms:
   - file_name_template: '{{ .ConventionalFileName }}'
     id: packages
-    homepage: https://github.com/toozej/rss2mastodon
+    homepage: https://github.com/toozej/rss2socials
     description: |-
-      Golang starter template
+      Watches a RSS feed for new posts, then announces them on Mastodon
     maintainer: toozej
     license: GPLv3
-    vendor: rss2mastodon
+    vendor: rss2socials
     bindir: /usr/bin
     section: utils
     contents:
-      - src: ./completions/rss2mastodon.bash
-        dst: /usr/share/bash-completion/completions/rss2mastodon
+      - src: ./completions/rss2socials.bash
+        dst: /usr/share/bash-completion/completions/rss2socials
         file_info:
           mode: 0644
-      - src: ./completions/rss2mastodon.fish
-        dst: /usr/share/fish/completions/rss2mastodon.fish
+      - src: ./completions/rss2socials.fish
+        dst: /usr/share/fish/completions/rss2socials.fish
         file_info:
           mode: 0644
-      - src: ./completions/rss2mastodon.zsh
-        dst: /usr/share/zsh/vendor-completions/_rss2mastodon
+      - src: ./completions/rss2socials.zsh
+        dst: /usr/share/zsh/vendor-completions/_rss2socials
         file_info:
           mode: 0644
-      - src: ./manpages/rss2mastodon.1.gz
-        dst: /usr/share/man/man1/rss2mastodon.1.gz
+      - src: ./manpages/rss2socials.1.gz
+        dst: /usr/share/man/man1/rss2socials.1.gz
         file_info:
           mode: 0644
       - src: ./LICENSE
-        dst: /usr/share/doc/rss2mastodon/copyright
+        dst: /usr/share/doc/rss2socials/copyright
         file_info:
           mode: 0644
     formats:
@@ -273,6 +184,30 @@ nfpms:
       lintian_overrides:
         - statically-linked-binary
         - changelog-file-missing-in-native-package
+
+homebrew_casks:
+  - name: rss2socials
+    homepage: https://github.com/toozej/rss2socials
+    description: "Watches a RSS feed for new posts, then announces them on Mastodon"
+    license: GPLv3
+    repository:
+      owner: toozej
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    manpages:
+      - "man/rss2socials.1.gz"
+    completions:
+      bash: "completions/rss2socials.bash"
+      zsh: "completions/rss2socials.zsh"
+      fish: "completions/rss2socials.fish"
+    url:
+      verified: "github.com/toozej/rss2socials/releases/download"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/rss2socials"]
+          end
 
 sboms:
   - artifacts: archive
@@ -305,4 +240,4 @@ milestones:
 
 release:
   footer: |
-    **Full Changelog**: https://github.com/toozej/rss2mastodon/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/toozej/rss2socials/compare/{{ .PreviousTag }}...{{ .Tag }}

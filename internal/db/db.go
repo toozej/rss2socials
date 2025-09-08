@@ -1,3 +1,5 @@
+// Package db provides database operations for storing and checking tooted posts using SQLite.
+// It manages the database connection, table creation, and CRUD operations for post tracking.
 package db
 
 import (
@@ -8,15 +10,17 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/toozej/rss2mastodon/internal/rss"
+	"github.com/toozej/rss2socials/internal/rss"
 )
 
-var db *sql.DB
+var DB *sql.DB
 
 // InitDB initializes the SQLite database
 func InitDB() {
+	// InitDB opens the SQLite database file and creates the tooted_posts table if it doesn't exist.
+	// It sets up the schema for storing post links, content hashes, and timestamps.
 	var err error
-	db, err = sql.Open("sqlite3", "./tooted_posts.db")
+	DB, err = sql.Open("sqlite3", "./tooted_posts.db")
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
 	}
@@ -27,7 +31,7 @@ func InitDB() {
 		content_hash TEXT,
 		timestamp TEXT
 	)`
-	_, err = db.Exec(query)
+	_, err = DB.Exec(query)
 	if err != nil {
 		log.Fatal("Failed to create table:", err)
 	}
@@ -35,7 +39,8 @@ func InitDB() {
 
 // CloseDB closes the SQLite database connection
 func CloseDB() {
-	err := db.Close()
+	// CloseDB closes the active SQLite database connection.
+	err := DB.Close()
 	if err != nil {
 		log.Error("Error closing SQLite database connection: ", err)
 	}
@@ -43,16 +48,20 @@ func CloseDB() {
 
 // StoreTootedPost stores the link, content hash, and timestamp in the database
 func StoreTootedPost(link string, content string) error {
+	// StoreTootedPost inserts or replaces a post record in the database with its link, content hash, and current timestamp.
+	// It uses the RSS hash function to compute the content hash.
 	query := `INSERT OR REPLACE INTO tooted_posts(link, content_hash, timestamp) VALUES (?, ?, ?)`
 	contentHash := rss.HashContent(content)
-	_, err := db.Exec(query, link, fmt.Sprintf("%x", contentHash), time.Now().Format(time.RFC3339))
+	_, err := DB.Exec(query, link, fmt.Sprintf("%x", contentHash), time.Now().Format(time.RFC3339))
 	return err
 }
 
 // HasPostChanged checks if the post content has changed or if it is new
 func HasPostChanged(link string, content string) (exists bool, updated bool, err error) {
+	// HasPostChanged checks if a post with the given link exists in the database and if its content has changed.
+	// Returns exists (true if post found), updated (true if content differs), and any error.
 	query := `SELECT content_hash FROM tooted_posts WHERE link = ?`
-	row := db.QueryRow(query, link)
+	row := DB.QueryRow(query, link)
 
 	var storedHash string
 	err = row.Scan(&storedHash)

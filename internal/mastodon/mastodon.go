@@ -1,3 +1,5 @@
+// Package mastodon provides functionality for interacting with the Mastodon API.
+// It includes utilities for formatting toot content from RSS items and sending posts to Mastodon instances.
 package mastodon
 
 import (
@@ -6,24 +8,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toozej/rss2mastodon/internal/rss"
-
-	"github.com/spf13/viper"
+	"github.com/toozej/rss2socials/internal/rss"
 )
 
 // GetTootContent constructs the toot message depending on the post title
-func GetTootContent(post rss.RSSItem) string {
-	if strings.HasPrefix(post.Title, "Thoughts") {
-		return fmt.Sprintf("%s - %s", post.Content, post.Link)
+func GetTootContent(post rss.RSSItem, skipPrefixCategories []string) string {
+	// GetTootContent formats the RSS item into a Mastodon toot message.
+	// It customizes the content based on the post title, using the skipPrefixCategories list.
+	for _, cat := range skipPrefixCategories {
+		if strings.HasPrefix(post.Title, cat) {
+			return fmt.Sprintf("%s - %s", post.Content, post.Link)
+		}
 	}
 	return fmt.Sprintf("New blog post: %s", post.Link)
 }
 
 // TootPost sends a post to Mastodon
-func TootPost(content string) error {
-	mastodonURL := viper.GetString("mastodon_url")
-	mastodonToken := viper.GetString("mastodon_token")
-
+func TootPost(mastodonURL, mastodonToken, content string) error {
+	// TootPost sends a toot to the specified Mastodon instance using the provided access token.
+	// It constructs an HTTP POST request to the Mastodon API and handles the response.
 	if mastodonURL == "" || mastodonToken == "" {
 		return fmt.Errorf("mastodon URL and token must be set")
 	}
