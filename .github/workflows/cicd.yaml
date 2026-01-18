@@ -8,6 +8,15 @@ on:
   schedule:
     - cron: "0 1 * * 1"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # Give the workflow permission to write attestations.
+  id-token: write
+  attestations: write
+
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -15,7 +24,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: '^1.23'
+          go-version: '^1.25'
           check-latest: true
       - name: Run pre-commit
         run: |
@@ -47,7 +56,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: '^1.23'
+          go-version: '^1.25'
           check-latest: true
       - uses: github/codeql-action/init@v4 # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
         with:
@@ -79,7 +88,7 @@ jobs:
       - uses: snyk/actions/setup@master # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - uses: actions/setup-go@v6
         with:
-          go-version: '^1.23'
+          go-version: '^1.25'
           check-latest: true
       - name: Snyk monitor
         run: snyk test
@@ -93,6 +102,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -103,8 +114,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '^1.23'
+          go-version: '^1.25'
           check-latest: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - uses: sigstore/cosign-installer@v3 # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - uses: anchore/sbom-action/download-syft@v0 # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - name: Login to DockerHub
@@ -133,11 +146,20 @@ jobs:
           distribution: goreleaser
           version: latest
           args: release --clean
-          workdir: '/home/runner/work/rss2mastodon/rss2mastodon'
+          workdir: '/home/runner/work/rss2socials/rss2socials'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+      # After GoReleaser runs, attest all the files in ./dist/checksums.txt:
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: ./dist/checksums.txt
+      # After GoReleaser runs, attest all the images in ./dist/digests.txt:
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: ./dist/digests.txt
 
   verify_signed_binaries:
     runs-on: ubuntu-latest
@@ -153,13 +175,13 @@ jobs:
         uses: sigstore/cosign-installer@main # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - name: Get public cosign key
         run: |
-          curl --silent https://raw.githubusercontent.com/toozej/rss2mastodon/main/rss2mastodon.pub -O
+          curl --silent https://raw.githubusercontent.com/toozej/rss2socials/main/rss2socials.pub -O
       - name: Verify signatures of binaries
         run: |
-          FILE=./dist/rss2mastodon_${{ matrix.platform }}_${{ matrix.arch }}/rss2mastodon${{ matrix.extension }}
+          FILE=./dist/rss2socials_${{ matrix.platform }}_${{ matrix.arch }}/rss2socials${{ matrix.extension }}
           if test -f "${FILE}"; then
             echo "verifying binary: ${FILE}"
-            cosign verify --key rss2mastodon.pub --signature "${FILE}.sig" "${FILE}"
+            cosign verify --key rss2socials.pub --signature "${FILE}.sig" "${FILE}"
           else
             echo "skipping verifying non-existant binary: ${FILE}"
           fi
@@ -178,13 +200,13 @@ jobs:
         uses: sigstore/cosign-installer@main # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
       - name: Get public cosign key
         run: |
-          curl --silent https://raw.githubusercontent.com/toozej/rss2mastodon/main/rss2mastodon.pub -O
+          curl --silent https://raw.githubusercontent.com/toozej/rss2socials/main/rss2socials.pub -O
       - name: Verify signatures of archives
         run: |
-          FILE=./dist/rss2mastodon_${{ matrix.platform }}_${{ matrix.arch }}.${{ matrix.extension }}
+          FILE=./dist/rss2socials_${{ matrix.platform }}_${{ matrix.arch }}.${{ matrix.extension }}
           if test -f "${FILE}"; then
             echo "verifying archive: ${FILE}"
-            cosign verify --key rss2mastodon.pub --signature "${FILE}.sig" "${FILE}"
+            cosign verify --key rss2socials.pub --signature "${FILE}.sig" "${FILE}"
           else
             echo "skipping verifying non-existant archive: ${FILE}"
           fi
@@ -197,7 +219,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
         with:
-          image-ref: 'ghcr.io/toozej/rss2mastodon:latest'
+          image-ref: 'ghcr.io/toozej/rss2socials:latest'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -215,13 +237,13 @@ jobs:
     steps:
       - name: Install Cosign
         uses: sigstore/cosign-installer@main # nosemgrep: yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha
-      - name: Get public cosign key for rss2mastodon project from GitHub
+      - name: Get public cosign key for rss2socials project from GitHub
         run: |
-          curl --silent https://raw.githubusercontent.com/toozej/rss2mastodon/main/rss2mastodon.pub -O
+          curl --silent https://raw.githubusercontent.com/toozej/rss2socials/main/rss2socials.pub -O
       - name: Verify signatures of Docker images
         run: |
-          cosign verify --key rss2mastodon.pub \
-            ${{ matrix.registry }}toozej/rss2mastodon:${{ matrix.tag }}
+          cosign verify --key rss2socials.pub \
+            ${{ matrix.registry }}toozej/rss2socials:${{ matrix.tag }}
 
   workflow-keepalive:
     if: github.event_name == 'schedule'

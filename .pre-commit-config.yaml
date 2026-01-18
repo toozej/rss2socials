@@ -65,6 +65,7 @@ repos:
       - id: go-imports
       - id: golangci-lint-mod
       - id: go-test-mod
+        args: [-race]
 
   # run shellcheck on Bash scripts
   - repo: https://github.com/koalaman/shellcheck-precommit
@@ -77,10 +78,11 @@ repos:
     rev: v2.14.0
     hooks:
       - id: hadolint-docker
-        args: ["--ignore", "DL3007"]
+        args: ["--ignore", "DL3007", "--ignore", "DL3008", "--ignore", "DL3013", "--ignore",
+          "DL3062"]
 
   # lint Makefile
-  - repo: https://github.com/checkmake/checkmake/
+  - repo: https://github.com/checkmake/checkmake
     rev: v0.3.0
     hooks:
       - id: checkmake
@@ -94,11 +96,12 @@ repos:
 
   # run semgrep on all known filetypes
   - repo: https://github.com/returntocorp/semgrep
-    rev: 'v1.89.0'
+    rev: "v1.89.0"
     hooks:
       - id: semgrep
+        language_version: python3.12
         # See https://semgrep.dev/explore to select a ruleset and copy its URL
-        args: ['--config', 'auto', '--error', '--skip-unknown-extensions', '--quiet']
+        args: ["--config", "auto", "--error", "--skip-unknown-extensions", "--quiet"]
 
   - repo: meta
     hooks:
