@@ -30,5 +30,7 @@ FROM gcr.io/distroless/static-debian12:latest
 COPY --from=build /go/rss2socials/rss2socials /go/bin/rss2socials
 # Expose port for publishing as web service
 # EXPOSE 8081
+# Run as non-root user (distroless provides 'nonroot' user at UID 65532)
+USER nonroot
 # Run the binary.
 ENTRYPOINT ["/go/bin/rss2socials"]
