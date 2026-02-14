@@ -6,7 +6,7 @@ require (
 	github.com/blushft/go-diagrams v0.0.0-20250322201119-d91ac4ca5de4
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/joho/godotenv v1.5.1
-	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/muesli/mango-cobra v1.3.0
 	github.com/muesli/roff v0.1.0
 	github.com/sirupsen/logrus v1.9.4
