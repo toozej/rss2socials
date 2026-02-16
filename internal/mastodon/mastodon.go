@@ -41,7 +41,7 @@ func TootPost(mastodonURL, mastodonToken, content string) error {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", mastodonToken))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- mastodonURL is from config, not user input
 	if err != nil {
 		return err
 	}

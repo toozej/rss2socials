@@ -52,7 +52,7 @@ func sendGotifyNotification(conf *config.Config, title, message string) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- GotifyURL is from config, not user input
 	if err != nil {
 		return fmt.Errorf("failed to send Gotify request: %w", err)
 	}

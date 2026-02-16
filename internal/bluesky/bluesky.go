@@ -86,7 +86,7 @@ func Post(handle, password, pds, content string) error {
 	req.Header.Set("Authorization", "Bearer "+session.AccessJwt)
 
 	client := &http.Client{}
-	resp, err = client.Do(req)
+	resp, err = client.Do(req) // #nosec G704 -- pds URL is from config, not user input
 	if err != nil {
 		return fmt.Errorf("failed to create record: %w", err)
 	}
