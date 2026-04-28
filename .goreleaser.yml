@@ -86,11 +86,15 @@ dockers_v2:
       - 'ghcr.io/toozej/rss2socials'
       - 'quay.io/toozej/rss2socials'
     tags:
-      - "v{{ .Version }}"
-      - "{{ .Version }}"
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}v{{ .Version
+        }}{{ end }}'
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}{{ .Version
+        }}{{ end }}'
       - "latest"
-      - "v{{ .Version }}-distroless"
-      - "{{ .Version }}-distroless"
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}v{{ .Version
+        }}-distroless{{ end }}'
+      - '{{ if ne (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}{{ .Version
+        }}-distroless{{ end }}'
       - "distroless"
     dockerfile: Dockerfile.goreleaser
     labels:
@@ -239,5 +243,6 @@ milestones:
   - close: true
 
 release:
+  disable: '{{ eq (envOrDefault "GORELEASER_DOCKER_REFRESH" "false") "true" }}'
   footer: |
     **Full Changelog**: https://github.com/toozej/rss2socials/compare/{{ .PreviousTag }}...{{ .Tag }}
