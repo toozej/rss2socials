@@ -1,5 +1,5 @@
 # setup project and deps
-FROM golang:1.26-bookworm AS init
+FROM golang:1.26-trixie AS init
 
 WORKDIR /go/rss2socials/
 
@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y coreutils
 RUN CGO_ENABLED=0 go build -ldflags="${LDFLAGS}"
 
 # runtime image including CA certs and tzdata
-FROM gcr.io/distroless/static-debian12:latest
+FROM gcr.io/distroless/static-debian13:nonroot
 # Copy our static executable.
 COPY --from=build /go/rss2socials/rss2socials /go/bin/rss2socials
 # Expose port for publishing as web service

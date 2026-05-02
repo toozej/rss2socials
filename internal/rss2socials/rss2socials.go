@@ -3,6 +3,7 @@
 package rss2socials
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -86,28 +87,35 @@ func handlePost(post rss.RSSItem, conf *config.Config) {
 		return
 	}
 
-	err = mastodon.TootPost(conf.MastodonURL, conf.MastodonAccessToken, tootContent)
-	if err != nil {
-		if isUpdate {
-			log.Error("Failed to toot updated post: ", err)
+	enabledSites := conf.EnabledSites()
+	siteMap := make(map[string]bool, len(enabledSites))
+	for _, s := range enabledSites {
+		siteMap[s] = true
+	}
+
+	// Post to Mastodon
+	if siteMap["mastodon"] {
+		err = mastodon.TootPost(*conf, tootContent)
+		if err != nil {
+			if isUpdate {
+				log.Error("Failed to toot updated post: ", err)
+			} else {
+				log.Printf("Failed to toot new post: %v", err)
+			}
 		} else {
-			log.Printf("Failed to toot new post: %v", err)
+			log.Info("Successfully posted to Mastodon")
 		}
-		return
+
+		err = db.StoreTootedPost(post.Link, post.Content)
+		if err != nil {
+			log.Error("Storing post toot in database failed: ", err)
+		}
 	}
 
-	// Store the current content after successful toot
-	err = db.StoreTootedPost(post.Link, post.Content)
-	if err != nil {
-		log.Error("Storing post toot in database failed: ", err)
-	}
-
-	// Post to Bluesky (Fire and forget or log error, but don't block DB update which is primary?
-	// Actually we should post to all and then mark as done. Existing logic marks as done after Mastodon.
-	// For now, I will add Bluesky posting here. Ideally we should have a 'posted_to' table but scope is refactor.)
-	if conf.BlueskyHandle != "" && conf.BlueskyPassword != "" {
+	// Post to Bluesky
+	if siteMap["bluesky"] && conf.BlueskyHandle != "" && conf.BlueskyAppKey != "" {
 		log.Infof("Posting to Bluesky: %s", post.Title)
-		if err := bluesky.Post(conf.BlueskyHandle, conf.BlueskyPassword, conf.BlueskyPDS, tootContent); err != nil {
+		if err := bluesky.Post(context.Background(), *conf, tootContent); err != nil {
 			log.Errorf("Failed to post to Bluesky: %v", err)
 		} else {
 			log.Info("Successfully posted to Bluesky")
@@ -115,9 +123,9 @@ func handlePost(post rss.RSSItem, conf *config.Config) {
 	}
 
 	// Post to Threads
-	if conf.ThreadsUserID != "" && conf.ThreadsToken != "" {
+	if siteMap["threads"] && conf.ThreadsToken != "" && conf.ThreadsClientID != "" && conf.ThreadsClientSecret != "" {
 		log.Infof("Posting to Threads: %s", post.Title)
-		if err := threads.Post(conf.ThreadsUserID, conf.ThreadsToken, tootContent); err != nil {
+		if err := threads.Post(context.Background(), *conf, tootContent); err != nil {
 			log.Errorf("Failed to post to Threads: %v", err)
 		} else {
 			log.Info("Successfully posted to Threads")

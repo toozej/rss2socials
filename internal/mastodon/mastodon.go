@@ -1,20 +1,21 @@
 // Package mastodon provides functionality for interacting with the Mastodon API.
-// It includes utilities for formatting toot content from RSS items and sending posts to Mastodon instances.
+// It includes utilities for formatting toot content from RSS items and sending posts to Mastodon instances
+// using the github.com/mattn/go-mastodon library.
 package mastodon
 
 import (
+	"context"
 	"fmt"
-	"net/http"
 	"strings"
-	"time"
+
+	"github.com/mattn/go-mastodon"
 
 	"github.com/toozej/rss2socials/internal/rss"
+	"github.com/toozej/rss2socials/pkg/config"
 )
 
 // GetTootContent constructs the toot message depending on the post title
 func GetTootContent(post rss.RSSItem, skipPrefixCategories []string) string {
-	// GetTootContent formats the RSS item into a Mastodon toot message.
-	// It customizes the content based on the post title, using the skipPrefixCategories list.
 	for _, cat := range skipPrefixCategories {
 		if strings.HasPrefix(post.Title, cat) {
 			return fmt.Sprintf("%s - %s", post.Content, post.Link)
@@ -23,33 +24,26 @@ func GetTootContent(post rss.RSSItem, skipPrefixCategories []string) string {
 	return fmt.Sprintf("New blog post: %s", post.Link)
 }
 
-// TootPost sends a post to Mastodon
-func TootPost(mastodonURL, mastodonToken, content string) error {
-	// TootPost sends a toot to the specified Mastodon instance using the provided access token.
-	// It constructs an HTTP POST request to the Mastodon API and handles the response.
-	if mastodonURL == "" || mastodonToken == "" {
-		return fmt.Errorf("mastodon URL and token must be set")
+// NewClient creates a new Mastodon API client from the given configuration.
+func NewClient(conf config.Config) *mastodon.Client {
+	return mastodon.NewClient(&mastodon.Config{
+		Server:       conf.MastodonURL,
+		ClientID:     conf.MastodonClientKey,
+		ClientSecret: conf.MastodonClientSecret,
+		AccessToken:  conf.MastodonAccessToken,
+	})
+}
+
+// TootPost sends a post to Mastodon using the go-mastodon library.
+func TootPost(conf config.Config, content string) error {
+	if conf.MastodonURL == "" || conf.MastodonAccessToken == "" {
+		return fmt.Errorf("mastodon URL and access token must be set")
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	formData := fmt.Sprintf("status=%s", content)
-	req, err := http.NewRequest("POST", mastodonURL+"/api/v1/statuses", strings.NewReader(formData))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", mastodonToken))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := client.Do(req) // #nosec G704 -- mastodonURL is from config, not user input
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected HTTP status: %d", resp.StatusCode)
-	}
-
-	return nil
+	client := NewClient(conf)
+	_, err := client.PostStatus(context.Background(), &mastodon.Toot{
+		Status:     content,
+		Visibility: mastodon.VisibilityPublic,
+	})
+	return err
 }

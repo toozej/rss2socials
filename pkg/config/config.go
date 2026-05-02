@@ -52,7 +52,10 @@ import (
 type Config struct {
 	// MastodonURL is the URL of the Mastodon instance.
 	MastodonURL string `env:"MASTODON_URL"`
-
+	// MastodonClientKey is the client key for the Mastodon application.
+	MastodonClientKey string `env:"MASTODON_CLIENT_KEY"`
+	// MastodonClientSecret is the client secret for the Mastodon application.
+	MastodonClientSecret string `env:"MASTODON_CLIENT_SECRET"`
 	// MastodonAccessToken is the access token for Mastodon API.
 	MastodonAccessToken string `env:"MASTODON_ACCESS_TOKEN"`
 
@@ -79,13 +82,21 @@ type Config struct {
 	SkipPrefixCategories []string `env:"SKIP_PREFIX_CATEGORIES" envSeparator:"," envDefault:"Thoughts"`
 
 	// Bluesky configuration
-	BlueskyHandle   string `env:"BLUESKY_HANDLE"`
-	BlueskyPassword string `env:"BLUESKY_PASSWORD"`
-	BlueskyPDS      string `env:"BLUESKY_PDS" envDefault:"https://bsky.social"`
+	BlueskyHandle string `env:"BLUESKY_HANDLE"`
+	BlueskyAppKey string `env:"BLUESKY_APPKEY"`
+	BlueskyPDS    string `env:"BLUESKY_PDS"`
 
 	// Threads configuration
-	ThreadsUserID string `env:"THREADS_USER_ID"`
-	ThreadsToken  string `env:"THREADS_TOKEN"`
+	ThreadsUserID       string `env:"THREADS_USER_ID"`
+	ThreadsToken        string `env:"THREADS_ACCESS_TOKEN"`
+	ThreadsClientID     string `env:"THREADS_CLIENT_ID"`
+	ThreadsClientSecret string `env:"THREADS_CLIENT_SECRET"`
+	ThreadsRedirectURI  string `env:"THREADS_REDIRECT_URI"`
+
+	// SocialSites specifies which social media sites to post to.
+	// If empty, defaults to all sites with their required credentials fulfilled.
+	// Valid values: "mastodon", "bluesky", "threads"
+	SocialSites []string `env:"SOCIAL_SITES" envSeparator:","`
 }
 
 // GetEnvVars loads and returns the application configuration from environment
@@ -169,6 +180,14 @@ func GetEnvVars() Config {
 		fmt.Printf("MASTODON_URL must be provided in .env file or environment\n")
 		os.Exit(1)
 	}
+	if conf.MastodonClientKey == "" {
+		fmt.Printf("MASTODON_CLIENT_KEY must be provided in .env file or environment\n")
+		os.Exit(1)
+	}
+	if conf.MastodonClientSecret == "" {
+		fmt.Printf("MASTODON_CLIENT_SECRET must be provided in .env file or environment\n")
+		os.Exit(1)
+	}
 	if conf.MastodonAccessToken == "" {
 		fmt.Printf("MASTODON_ACCESS_TOKEN must be provided in .env file or environment\n")
 		os.Exit(1)
@@ -183,4 +202,25 @@ func GetEnvVars() Config {
 	}
 
 	return conf
+}
+
+// EnabledSites returns the list of social media sites that should be posted to.
+// If SocialSites is explicitly set, only those sites are returned.
+// Otherwise, it defaults to all sites that have their required credentials fulfilled.
+func (c Config) EnabledSites() []string {
+	if len(c.SocialSites) > 0 {
+		return c.SocialSites
+	}
+
+	var sites []string
+	if c.MastodonURL != "" && c.MastodonAccessToken != "" {
+		sites = append(sites, "mastodon")
+	}
+	if c.BlueskyHandle != "" && c.BlueskyAppKey != "" {
+		sites = append(sites, "bluesky")
+	}
+	if c.ThreadsToken != "" && c.ThreadsClientID != "" && c.ThreadsClientSecret != "" {
+		sites = append(sites, "threads")
+	}
+	return sites
 }

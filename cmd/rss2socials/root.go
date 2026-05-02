@@ -50,8 +50,8 @@ var (
 // all subcommands.
 var rootCmd = &cobra.Command{
 	Use:              "rss2socials",
-	Short:            "Watches a RSS feed for new posts, then announces them on Mastodon",
-	Long:             `Watches a RSS feed for new posts, then announces them on Mastodon`,
+	Short:            "Watches a RSS feed for new posts, then announces them on various social media sites",
+	Long:             `Watches a RSS feed for new posts, then announces them on various social media sites`,
 	Args:             cobra.ExactArgs(0),
 	PersistentPreRun: rootCmdPreRun,
 	Run:              rootCmdRun,
@@ -125,14 +125,25 @@ func init() {
 	rootCmd.Flags().StringVarP(&conf.Category, "category", "c", conf.Category, "Category to filter URL last segment")
 	rootCmd.Flags().StringSliceVar(&conf.SkipPrefixCategories, "skip-prefix-categories", conf.SkipPrefixCategories, "List of categories to skip the 'New blog post:' prefix")
 
+	// Mastodon flags
+	rootCmd.Flags().StringVar(&conf.MastodonURL, "mastodon-url", conf.MastodonURL, "Mastodon URL")
+	rootCmd.Flags().StringVar(&conf.MastodonClientKey, "mastodon-client-key", conf.MastodonClientKey, "Mastodon Client Key")
+	rootCmd.Flags().StringVar(&conf.MastodonClientSecret, "mastodon-client-secret", conf.MastodonClientSecret, "Mastodon Client Secret")
+	rootCmd.Flags().StringVar(&conf.MastodonAccessToken, "mastodon-access-token", conf.MastodonAccessToken, "Mastodon Access Token")
+
 	// Bluesky flags
 	rootCmd.Flags().StringVar(&conf.BlueskyHandle, "bluesky-handle", conf.BlueskyHandle, "Bluesky handle")
-	rootCmd.Flags().StringVar(&conf.BlueskyPassword, "bluesky-password", conf.BlueskyPassword, "Bluesky app password")
-	rootCmd.Flags().StringVar(&conf.BlueskyPDS, "bluesky-pds", conf.BlueskyPDS, "Bluesky PDS URL")
+	rootCmd.Flags().StringVar(&conf.BlueskyAppKey, "bluesky-appkey", conf.BlueskyAppKey, "Bluesky app key/password")
 
 	// Threads flags
 	rootCmd.Flags().StringVar(&conf.ThreadsUserID, "threads-user-id", conf.ThreadsUserID, "Threads User ID")
-	rootCmd.Flags().StringVar(&conf.ThreadsToken, "threads-token", conf.ThreadsToken, "Threads Access Token")
+	rootCmd.Flags().StringVar(&conf.ThreadsToken, "threads-access-token", conf.ThreadsToken, "Threads Access Token")
+	rootCmd.Flags().StringVar(&conf.ThreadsClientID, "threads-client-id", conf.ThreadsClientID, "Threads Client ID")
+	rootCmd.Flags().StringVar(&conf.ThreadsClientSecret, "threads-client-secret", conf.ThreadsClientSecret, "Threads Client Secret")
+	rootCmd.Flags().StringVar(&conf.ThreadsRedirectURI, "threads-redirect-uri", conf.ThreadsRedirectURI, "Threads Redirect URI")
+
+	// Social sites filter flag
+	rootCmd.Flags().StringSliceVar(&conf.SocialSites, "social-sites", conf.SocialSites, "Social media sites to post to (mastodon,bluesky,threads). Defaults to all sites with credentials configured.")
 
 	// add sub-commands
 	rootCmd.AddCommand(

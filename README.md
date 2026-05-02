@@ -35,22 +35,30 @@ cd rss2socials
 1.	Set Environment Variables:
     Create a .env file in the root of your project or set the required environment variables directly:
 
-    ```
-    # Mastodon
-    MASTODON_URL=https://your-mastodon-instance
-    MASTODON_TOKEN=your-access-token
+```
+# Mastodon
+MASTODON_URL=https://your-mastodon-instance
+MASTODON_CLIENT_KEY=your-client-key
+MASTODON_CLIENT_SECRET=your-client-secret
+MASTODON_ACCESS_TOKEN=your-access-token
+
+# Bluesky
+BLUESKY_HANDLE=your.handle.bsky.social
+BLUESKY_APPKEY=your-app-key
     
-    # Bluesky
-    BLUESKY_HANDLE=your.handle.bsky.social
-    BLUESKY_PASSWORD=your-app-password
-    
-    # Threads
-    THREADS_USER_ID=your-user-id
-    THREADS_TOKEN=your-access-token
-    
-    # General
-    FEED_URL=https://example.com/rss
-    ```
+# Threads
+THREADS_USER_ID=your-user-id
+THREADS_ACCESS_TOKEN=your-access-token
+THREADS_CLIENT_ID=your-client-id
+THREADS_CLIENT_SECRET=your-client-secret
+THREADS_REDIRECT_URI=https://yourapp.com/callback
+
+# Optional: specify which social sites to post to (defaults to all with credentials configured)
+# SOCIAL_SITES=mastodon,bluesky,threads
+
+# General
+FEED_URL=https://example.com/rss
+```
 
     Alternatively, you can provide parameters as command-line flags.
 
@@ -83,8 +91,54 @@ Use the --debug flag to enable debug-level logging for troubleshooting.
 
 ### Social Integrations
 - **Mastodon**: `internal/mastodon`
+
+#### Creating a Mastodon Application
+
+To obtain the required `MASTODON_CLIENT_KEY`, `MASTODON_CLIENT_SECRET`, and `MASTODON_ACCESS_TOKEN` credentials:
+
+1. Log in to your Mastodon instance (e.g., `https://mastodon.social`).
+2. Go to **Preferences** → **Development** → **New Application**.
+3. Fill in the application name (e.g., `rss2socials`).
+4. Under **Scopes**, ensure at least `write:statuses` is checked (required for posting).
+5. Click **Submit** to create the application.
+6. On the application page, you'll find:
+   - **Client key** → set as `MASTODON_CLIENT_KEY`
+   - **Client secret** → set as `MASTODON_CLIENT_SECRET`
+   - **Your access token** → set as `MASTODON_ACCESS_TOKEN`
+
+If your access token is not shown, click **Create new access token** to generate one with the same scopes.
+
 - **Bluesky**: `internal/bluesky`
+
+#### Creating a Bluesky App Key
+
+To obtain the required `BLUESKY_HANDLE` and `BLUESKY_APPKEY` credentials:
+
+1. Log in to your Bluesky account at [bsky.app](https://bsky.app).
+2. Go to **Settings** → **Privacy and Security** → **App Passwords**.
+3. Click **Create App Password**.
+4. Enter a name for the password (e.g., `rss2socials`).
+5. Copy the generated app password — this is your `BLUESKY_APPKEY`.
+6. Your `BLUESKY_HANDLE` is your full Bluesky handle (e.g., `yourname.bsky.social`).
 - **Threads**: `internal/threads`
+
+#### Creating a Threads Application
+
+To obtain the required `THREADS_CLIENT_ID`, `THREADS_CLIENT_SECRET`, and `THREADS_ACCESS_TOKEN` credentials:
+
+1. Go to the [Meta for Developers](https://developers.facebook.com/) portal and create a new app.
+2. Add the **Threads API** product to your app.
+3. Under **Settings** → **Basic**, copy the **App ID** → set as `THREADS_CLIENT_ID`.
+4. Copy the **App Secret** → set as `THREADS_CLIENT_SECRET`.
+5. Set a **Redirect URI** (e.g., `https://yourapp.com/callback`) → set as `THREADS_REDIRECT_URI`.
+6. Configure the desired scopes (at minimum `threads_basic` and `threads_content_publish`).
+7. Use the OAuth flow to obtain an access token:
+   - Visit the authorization URL with your client ID and redirect URI.
+   - After the user authorizes, exchange the authorization code for a short-lived token.
+   - Exchange the short-lived token for a long-lived token → set as `THREADS_ACCESS_TOKEN`.
+8. Optionally, set `THREADS_USER_ID` to your Threads user ID (retrieved via the `/me` endpoint after authentication).
+
+See the [Threads API documentation](https://developers.facebook.com/docs/threads) for more details.
 
 ### Database Management (internal/db/db.go)
 - Manages an SQLite database to store and check previously posted items.

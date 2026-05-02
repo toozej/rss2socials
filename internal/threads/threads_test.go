@@ -1,94 +1,91 @@
 package threads
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/toozej/rss2socials/pkg/config"
 )
 
-func TestPost(t *testing.T) {
-	// 1. Mock the Threads API server
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Handle 1st request: Create Container
-		if r.URL.Path == "/123456/threads" && r.Method == "POST" {
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(CreateContainerResponse{ID: "container_id_123"})
-			return
-		}
-
-		// Handle 2nd request: Publish Container
-		if r.URL.Path == "/123456/threads_publish" && r.Method == "POST" {
-			// Verify creation_id parameter
-			err := r.ParseForm()
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			if r.Form.Get("creation_id") == "container_id_123" {
-				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(PublishContainerResponse{ID: "publish_id_456"})
-				return
-			}
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer mockServer.Close()
-
-	// 2. Override the API URL for testing using the unexported variable (allowed in same package tests)
-	originalURL := threadsAPIURL
-	threadsAPIURL = mockServer.URL
-	defer func() { threadsAPIURL = originalURL }()
-
-	// 3. Test Cases
+func TestPost_MissingCredentials(t *testing.T) {
 	tests := []struct {
-		name      string
-		userID    string
-		token     string
-		content   string
-		expectErr bool
+		name         string
+		clientID     string
+		clientSecret string
+		token        string
 	}{
-		{
-			name:      "Success",
-			userID:    "123456",
-			token:     "valid_token",
-			content:   "Hello Threads",
-			expectErr: false,
-		},
-		{
-			name:      "Missing UserID",
-			userID:    "",
-			token:     "valid_token",
-			content:   "Hello",
-			expectErr: true,
-		},
-		{
-			name:      "Missing Token",
-			userID:    "123456",
-			token:     "",
-			content:   "Hello",
-			expectErr: true,
-		},
-		{
-			name:      "API Failure (Invalid User)",
-			userID:    "invalid_user",
-			token:     "valid_token",
-			content:   "Hello",
-			expectErr: true, // Mock server returns 404 for paths not starting with /123456/
-		},
+		{name: "Missing Client ID", clientID: "", clientSecret: "secret123", token: "token123"},
+		{name: "Missing Client Secret", clientID: "clientid123", clientSecret: "", token: "token123"},
+		{name: "Both Missing", clientID: "", clientSecret: "", token: "token123"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Post(tt.userID, tt.token, tt.content)
-			if tt.expectErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+			conf := config.Config{
+				ThreadsClientID:     tt.clientID,
+				ThreadsClientSecret: tt.clientSecret,
+				ThreadsToken:        tt.token,
 			}
+			err := Post(context.Background(), conf, "Hello Threads")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "client ID and client secret are required")
 		})
 	}
+}
+
+func TestNewClient_MissingCredentials(t *testing.T) {
+	tests := []struct {
+		name         string
+		clientID     string
+		clientSecret string
+	}{
+		{name: "Missing Client ID", clientID: "", clientSecret: "secret123"},
+		{name: "Missing Client Secret", clientID: "clientid123", clientSecret: ""},
+		{name: "Both Missing", clientID: "", clientSecret: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			conf := config.Config{
+				ThreadsClientID:     tt.clientID,
+				ThreadsClientSecret: tt.clientSecret,
+			}
+			client, err := NewClient(conf)
+			assert.Error(t, err)
+			assert.Nil(t, client)
+			assert.Contains(t, err.Error(), "client ID and client secret are required")
+		})
+	}
+}
+
+func TestNewClient_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	conf := config.Config{
+		ThreadsClientID:     "test-client-id",
+		ThreadsClientSecret: "test-client-secret",
+		ThreadsRedirectURI:  "https://example.com/callback",
+		ThreadsToken:        "test-token",
+	}
+	client, err := NewClient(conf)
+	assert.Error(t, err)
+	assert.Nil(t, client)
+}
+
+func TestPost_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	conf := config.Config{
+		ThreadsClientID:     "test-client-id",
+		ThreadsClientSecret: "test-client-secret",
+		ThreadsRedirectURI:  "https://example.com/callback",
+		ThreadsToken:        "test-token",
+	}
+	err := Post(context.Background(), conf, "Integration test post")
+	assert.Error(t, err)
 }

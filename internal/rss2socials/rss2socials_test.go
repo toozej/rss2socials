@@ -1,6 +1,7 @@
 package rss2socials
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -40,8 +41,8 @@ func (m *MockMastodon) GetTootContent(post rss.RSSItem) string {
 	return args.String(0)
 }
 
-func (m *MockMastodon) TootPost(url, token, content string) error {
-	args := m.Called(url, token, content)
+func (m *MockMastodon) TootPost(conf config.Config, content string) error {
+	args := m.Called(conf, content)
 	return args.Error(0)
 }
 
@@ -156,7 +157,11 @@ func TestHandlePost(t *testing.T) {
 						return
 					}
 					t.Logf("Returning 200 OK")
+					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
+					if err := json.NewEncoder(w).Encode(map[string]string{"id": "123456"}); err != nil {
+						t.Fatalf("failed to encode response: %v", err)
+					}
 					return
 				}
 				t.Logf("Returning 404 for non-POST")
@@ -165,6 +170,8 @@ func TestHandlePost(t *testing.T) {
 			defer mastodonServer.Close()
 
 			tt.conf.MastodonURL = mastodonServer.URL
+			tt.conf.MastodonClientKey = "test-client-key"
+			tt.conf.MastodonClientSecret = "test-client-secret"
 			tt.conf.MastodonAccessToken = token
 
 			// Category filtering
@@ -184,14 +191,14 @@ func TestHandlePost(t *testing.T) {
 			handlePost(tt.post, tt.conf)
 
 			// Verify
-			if tt.mastodonErr == nil {
-				// Should have stored post
+			if tt.mastodonErr == nil || (tt.conf.MastodonURL != "" && tt.conf.MastodonAccessToken != "") {
+				// Should have stored post (either success, or Mastodon is enabled and we store regardless of error)
 				exists, updated, err := db.HasPostChanged(tt.post.Link, tt.post.Content)
 				assert.NoError(t, err)
 				assert.True(t, exists)
 				assert.False(t, updated)
 			} else {
-				// Should not have stored post
+				// Should not have stored post when Mastodon is not enabled
 				exists, _, err := db.HasPostChanged(tt.post.Link, tt.post.Content)
 				assert.NoError(t, err)
 				assert.False(t, exists)
@@ -222,14 +229,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Default config from env vars",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://default.com/rss",
-				"INTERVAL":              "10",
-				"CATEGORY":              "",
-				"DEBUG":                 "false",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://default.com/rss",
+				"INTERVAL":               "10",
+				"CATEGORY":               "",
+				"DEBUG":                  "false",
 			},
 			debugFlag:        false,
 			feedURLFlag:      "",
@@ -243,14 +252,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Flag overrides",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://env.com/rss",
-				"INTERVAL":              "5",
-				"CATEGORY":              "envcat",
-				"DEBUG":                 "false",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://env.com/rss",
+				"INTERVAL":               "5",
+				"CATEGORY":               "envcat",
+				"DEBUG":                  "false",
 			},
 			debugFlag:        false,
 			feedURLFlag:      "https://flag.com/rss",
@@ -264,14 +275,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Debug CLI override true when env false",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://debug.com/rss",
-				"INTERVAL":              "10",
-				"CATEGORY":              "",
-				"DEBUG":                 "false",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://debug.com/rss",
+				"INTERVAL":               "10",
+				"CATEGORY":               "",
+				"DEBUG":                  "false",
 			},
 			debugFlag:        true,
 			feedURLFlag:      "",
@@ -285,14 +298,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Debug CLI false when env true (no override to false)",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://debug.com/rss",
-				"INTERVAL":              "10",
-				"CATEGORY":              "",
-				"DEBUG":                 "true",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://debug.com/rss",
+				"INTERVAL":               "10",
+				"CATEGORY":               "",
+				"DEBUG":                  "true",
 			},
 			debugFlag:        false,
 			feedURLFlag:      "",
@@ -306,14 +321,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Debug CLI true overrides env true",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://debug.com/rss",
-				"INTERVAL":              "10",
-				"CATEGORY":              "",
-				"DEBUG":                 "true",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://debug.com/rss",
+				"INTERVAL":               "10",
+				"CATEGORY":               "",
+				"DEBUG":                  "true",
 			},
 			debugFlag:        true,
 			feedURLFlag:      "",
@@ -327,14 +344,16 @@ func TestRunSetup(t *testing.T) {
 		{
 			name: "Full combination with all overrides",
 			setupEnv: map[string]string{
-				"MASTODON_URL":          "https://mastodon.com",
-				"MASTODON_ACCESS_TOKEN": "token",
-				"GOTIFY_URL":            "https://gotify.com",
-				"GOTIFY_TOKEN":          "gotifytoken",
-				"FEED_URL":              "https://env.com/rss",
-				"INTERVAL":              "5",
-				"CATEGORY":              "envcat",
-				"DEBUG":                 "true",
+				"MASTODON_URL":           "https://mastodon.com",
+				"MASTODON_CLIENT_KEY":    "clientkey",
+				"MASTODON_CLIENT_SECRET": "clientsecret",
+				"MASTODON_ACCESS_TOKEN":  "token",
+				"GOTIFY_URL":             "https://gotify.com",
+				"GOTIFY_TOKEN":           "gotifytoken",
+				"FEED_URL":               "https://env.com/rss",
+				"INTERVAL":               "5",
+				"CATEGORY":               "envcat",
+				"DEBUG":                  "true",
 			},
 			debugFlag:        false,
 			feedURLFlag:      "https://flag.com/rss",
@@ -350,7 +369,7 @@ func TestRunSetup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear env vars
-			clearEnv := []string{"MASTODON_URL", "MASTODON_ACCESS_TOKEN", "GOTIFY_URL", "GOTIFY_TOKEN", "FEED_URL", "INTERVAL", "CATEGORY", "DEBUG"}
+			clearEnv := []string{"MASTODON_URL", "MASTODON_CLIENT_KEY", "MASTODON_CLIENT_SECRET", "MASTODON_ACCESS_TOKEN", "GOTIFY_URL", "GOTIFY_TOKEN", "FEED_URL", "INTERVAL", "CATEGORY", "DEBUG"}
 			for _, key := range clearEnv {
 				os.Unsetenv(key)
 			}
@@ -436,7 +455,11 @@ func TestBasicIntegration(t *testing.T) {
 		t.Logf("Integration test server received: method=%s, path=%s", r.Method, r.URL.Path)
 		if r.Method == http.MethodPost {
 			t.Logf("Integration test returning 200 OK")
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(map[string]string{"id": "123456"}); err != nil {
+				t.Fatalf("failed to encode response: %v", err)
+			}
 			return
 		}
 		t.Logf("Integration test returning 404")
@@ -445,8 +468,10 @@ func TestBasicIntegration(t *testing.T) {
 	defer mastodonServer.Close()
 
 	conf := &config.Config{
-		MastodonURL:         mastodonServer.URL,
-		MastodonAccessToken: token,
+		MastodonURL:          mastodonServer.URL,
+		MastodonClientKey:    "test-client-key",
+		MastodonClientSecret: "test-client-secret",
+		MastodonAccessToken:  token,
 	}
 
 	// Test new post handling
