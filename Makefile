@@ -45,10 +45,10 @@ else
 	OPENER=open
 endif
 
-.PHONY: all vet test build verify run up down build-distroless run-distroless install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs diagrams mutation-test test-changed watch-test profile-cpu profile-mem profile-all benchmark clean help
+.PHONY: all vet test build verify run up down distroless-build distroless-run install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs diagrams mutation-test test-changed watch-test profile-cpu profile-mem profile-all benchmark clean help
 
 all: vet pre-commit clean test build verify run ## Run default workflow via Docker
-local: clean local-update-deps local-vendor local-vet pre-commit local-test local-cover local-build ## Run default workflow using locally installed Golang toolchain
+local: local-update-deps local-vendor local-vet pre-commit clean local-test local-cover local-build local-release-test ## Run default workflow using locally installed Golang toolchain
 local-release-verify: local-release local-sign local-verify ## Release and verify using locally installed Golang toolchain
 pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 
@@ -84,6 +84,18 @@ up: test build ## Run Docker Compose project with build Docker image
 
 down: ## Stop running Docker Compose project
 	docker compose -f docker-compose.yml down --remove-orphans
+
+distroless-build: ## Build Docker image using distroless as final base
+	docker build -f $(CURDIR)/Dockerfile.distroless \
+		--build-arg VERSION=$(or $(VERSION),unknown) \
+		--build-arg COMMIT=$(or $(COMMIT),unknown) \
+		--build-arg BRANCH=$(or $(BRANCH),unknown) \
+		--build-arg BUILT_AT=$(NOW) \
+		--build-arg BUILDER=$(BUILDER) \
+		-t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)-distroless .
+
+distroless-run: ## Run built Docker image using distroless as final base
+	docker run --rm --name rss2socials -v $(CURDIR)/config:/config $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)-distroless
 
 install: ## Install rss2socials from latest GitHub release
 	if command -v go; then \

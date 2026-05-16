@@ -82,7 +82,7 @@ repos:
           "DL3062"]
 
   # lint Makefile
-  - repo: https://github.com/checkmake/checkmake
+  - repo: https://github.com/checkmake/checkmake/
     rev: v0.3.0
     hooks:
       - id: checkmake
@@ -102,11 +102,11 @@ repos:
 
   # run semgrep on all known filetypes
   - repo: https://github.com/semgrep/pre-commit
-    rev: "v1.163.0"
+    rev: 'v1.163.0'
     hooks:
       - id: semgrep
         # See https://semgrep.dev/explore to select a ruleset and copy its URL
-        args: ["--config", "auto", "--error", "--skip-unknown-extensions", "--quiet"]
+        args: ['--config', 'auto', '--error', '--skip-unknown-extensions', '--quiet']
 
   - repo: meta
     hooks:
