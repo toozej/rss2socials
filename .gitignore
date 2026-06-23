@@ -1,6 +1,4 @@
 # Cosign
-rss2socials.key
-cosign.key
 *.sig
 *.bundle
 

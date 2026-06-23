@@ -20,8 +20,11 @@
 //	import "github.com/toozej/rss2socials/pkg/config"
 //
 //	func main() {
-//		conf := config.GetEnvVars()
-//		fmt.Printf("Mastodon URL: %s\n", conf.MastodonURL)
+//	conf, err := config.GetEnvVars()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Printf("Mastodon URL: %s\n", conf.MastodonURL)
 //	}
 package config
 
@@ -131,28 +134,23 @@ type Config struct {
 //   - Validation against ".." sequences in relative paths
 //   - Safe file existence checking before loading
 //
-// The function will terminate the program with os.Exit(1) if any critical
-// errors occur during configuration loading, such as:
-//   - Current directory access failures
-//   - Path traversal attempts detected
-//   - .env file parsing errors
-//   - Environment variable parsing failures
-//   - Missing required configuration
-//
 // Returns:
 //   - Config: A populated configuration struct with values from environment
 //     variables and/or .env file
+//   - error: Non-nil if any critical error occurs during configuration loading
 //
 // Example:
 //
-//	conf := config.GetEnvVars()
+//	conf, err := config.GetEnvVars()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
 //	fmt.Printf("Mastodon URL: %s\n", conf.MastodonURL)
-func GetEnvVars() Config {
+func GetEnvVars() (Config, error) {
 	// Get current working directory for secure file operations
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Error getting current working directory: %s\n", err)
-		os.Exit(1)
+		return Config{}, fmt.Errorf("error getting current working directory: %w", err)
 	}
 
 	// Construct secure path for .env file within current directory
@@ -161,62 +159,55 @@ func GetEnvVars() Config {
 	// Ensure the path is within our expected directory (prevent traversal)
 	cleanEnvPath, err := filepath.Abs(envPath)
 	if err != nil {
-		fmt.Printf("Error resolving .env file path: %s\n", err)
-		os.Exit(1)
+		return Config{}, fmt.Errorf("error resolving .env file path: %w", err)
 	}
 	cleanCwd, err := filepath.Abs(cwd)
 	if err != nil {
-		fmt.Printf("Error resolving current directory: %s\n", err)
-		os.Exit(1)
+		return Config{}, fmt.Errorf("error resolving current directory: %w", err)
 	}
 	relPath, err := filepath.Rel(cleanCwd, cleanEnvPath)
 	if err != nil || strings.Contains(relPath, "..") {
-		fmt.Printf("Error: .env file path traversal detected\n")
-		os.Exit(1)
+		return Config{}, fmt.Errorf("error: .env file path traversal detected")
 	}
 
 	// Load .env file if it exists
 	if _, err := os.Stat(envPath); err == nil {
 		if err := godotenv.Load(envPath); err != nil {
-			fmt.Printf("Error loading .env file: %s\n", err)
-			os.Exit(1)
+			return Config{}, fmt.Errorf("error loading .env file: %w", err)
 		}
 	}
 
 	// Parse environment variables into config struct
 	var conf Config
 	if err := env.Parse(&conf); err != nil {
-		fmt.Printf("Error parsing environment variables: %s\n", err)
-		os.Exit(1)
+		return Config{}, fmt.Errorf("error parsing environment variables: %w", err)
 	}
 
 	// Validate required configuration
+	var missing []string
 	if conf.MastodonURL == "" {
-		fmt.Printf("MASTODON_URL must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "MASTODON_URL")
 	}
 	if conf.MastodonClientKey == "" {
-		fmt.Printf("MASTODON_CLIENT_KEY must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "MASTODON_CLIENT_KEY")
 	}
 	if conf.MastodonClientSecret == "" {
-		fmt.Printf("MASTODON_CLIENT_SECRET must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "MASTODON_CLIENT_SECRET")
 	}
 	if conf.MastodonAccessToken == "" {
-		fmt.Printf("MASTODON_ACCESS_TOKEN must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "MASTODON_ACCESS_TOKEN")
 	}
 	if conf.GotifyURL == "" {
-		fmt.Printf("GOTIFY_URL must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "GOTIFY_URL")
 	}
 	if conf.GotifyToken == "" {
-		fmt.Printf("GOTIFY_TOKEN must be provided in .env file or environment\n")
-		os.Exit(1)
+		missing = append(missing, "GOTIFY_TOKEN")
+	}
+	if len(missing) > 0 {
+		return conf, fmt.Errorf("required environment variables not set: %s", strings.Join(missing, ", "))
 	}
 
-	return conf
+	return conf, nil
 }
 
 // EnabledSites returns the list of social media sites that should be posted to.

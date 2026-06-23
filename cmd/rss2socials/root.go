@@ -114,7 +114,12 @@ func Execute() {
 // configuration values from environment variables.
 func init() {
 	// get configuration from environment variables
-	conf = config.GetEnvVars()
+	var err error
+	conf, err = config.GetEnvVars()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
+		os.Exit(1)
+	}
 
 	// create rootCmd-level flags
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug-level logging")
