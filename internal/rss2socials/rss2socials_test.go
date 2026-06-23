@@ -556,7 +556,10 @@ func TestRunSetup(t *testing.T) {
 				assert.NoError(t, cmd.Flags().Set("category", tt.categoryFlag))
 			}
 
-			conf := config.GetEnvVars()
+			conf, err := config.GetEnvVars()
+			if err != nil {
+				t.Fatalf("GetEnvVars() failed: %v", err)
+			}
 
 			debug, err := cmd.Flags().GetBool("debug")
 			assert.NoError(t, err)

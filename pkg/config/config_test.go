@@ -11,6 +11,7 @@ func TestGetEnvVars(t *testing.T) {
 		name                         string
 		setupEnvVars                 map[string]string
 		setupEnvFileContent          string
+		expectError                  bool
 		expectedMastodonURL          string
 		expectedMastodonClientKey    string
 		expectedMastodonClientSecret string
@@ -46,6 +47,7 @@ func TestGetEnvVars(t *testing.T) {
 				"THREADS_REDIRECT_URI":   "https://example.com/callback",
 				"THREADS_ACCESS_TOKEN":   "threadstoken789",
 			},
+			expectError:                  false,
 			expectedMastodonURL:          "https://mastodon.example.com",
 			expectedMastodonClientKey:    "clientkey123",
 			expectedMastodonClientSecret: "clientsecret456",
@@ -65,6 +67,7 @@ func TestGetEnvVars(t *testing.T) {
 		{
 			name:                         "Valid .env file",
 			setupEnvFileContent:          "MASTODON_URL=https://mastodon.env.com\nMASTODON_CLIENT_KEY=envclientkey\nMASTODON_CLIENT_SECRET=envclientsecret\nMASTODON_ACCESS_TOKEN=envtoken\nGOTIFY_URL=https://gotify.env.com\nGOTIFY_TOKEN=envgotifytoken\nDEBUG=false\nFEED_URL=https://env.com/rss\nINTERVAL=45\nBLUESKY_HANDLE=envuser.bsky.social\nBLUESKY_APPKEY=envappkey\nTHREADS_CLIENT_ID=envthreadsclientid\nTHREADS_CLIENT_SECRET=envthreadsclientsecret\nTHREADS_REDIRECT_URI=https://env.com/callback\nTHREADS_ACCESS_TOKEN=envthreadstoken\n",
+			expectError:                  false,
 			expectedMastodonURL:          "https://mastodon.env.com",
 			expectedMastodonClientKey:    "envclientkey",
 			expectedMastodonClientSecret: "envclientsecret",
@@ -98,6 +101,7 @@ func TestGetEnvVars(t *testing.T) {
 				"THREADS_ACCESS_TOKEN":   "overridethreadstoken",
 			},
 			setupEnvFileContent:          "MASTODON_URL=https://file.com\nMASTODON_CLIENT_KEY=fileclientkey\nMASTODON_CLIENT_SECRET=fileclientsecret\nMASTODON_ACCESS_TOKEN=filetoken\nGOTIFY_URL=https://gotify.file.com\nGOTIFY_TOKEN=filetoken\nBLUESKY_HANDLE=file.bsky.social\nBLUESKY_APPKEY=fileappkey\nTHREADS_CLIENT_ID=filethreadsclientid\nTHREADS_CLIENT_SECRET=filethreadsclientsecret\nTHREADS_REDIRECT_URI=https://file.com/callback\nTHREADS_ACCESS_TOKEN=filethreadstoken\n",
+			expectError:                  false,
 			expectedMastodonURL:          "https://override.com",
 			expectedMastodonClientKey:    "overrideclientkey",
 			expectedMastodonClientSecret: "overrideclientsecret",
@@ -124,6 +128,7 @@ func TestGetEnvVars(t *testing.T) {
 				"GOTIFY_URL":             "https://gotify.example.com",
 				"GOTIFY_TOKEN":           "gotifytoken456",
 			},
+			expectError:                  false,
 			expectedMastodonURL:          "https://mastodon.example.com",
 			expectedMastodonClientKey:    "clientkey123",
 			expectedMastodonClientSecret: "clientsecret456",
@@ -139,6 +144,13 @@ func TestGetEnvVars(t *testing.T) {
 			expectedThreadsClientSecret:  "",
 			expectedThreadsRedirectURI:   "",
 			expectedThreadsToken:         "",
+		},
+		{
+			name: "Missing required env vars returns error",
+			setupEnvVars: map[string]string{
+				"MASTODON_URL": "https://mastodon.example.com",
+			},
+			expectError: true,
 		},
 	}
 
@@ -175,7 +187,17 @@ func TestGetEnvVars(t *testing.T) {
 				os.Setenv(key, value)
 			}
 
-			conf := GetEnvVars()
+			conf, err := GetEnvVars()
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error from GetEnvVars(): %v", err)
+			}
 
 			if conf.MastodonURL != tt.expectedMastodonURL {
 				t.Errorf("expected MastodonURL %q, got %q", tt.expectedMastodonURL, conf.MastodonURL)

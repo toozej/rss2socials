@@ -58,14 +58,22 @@ func captureStdout(t *testing.T, fn func()) string {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	// Read from pipe in a separate goroutine to prevent deadlock
+	// if fn() writes enough data to fill the pipe buffer.
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = buf.ReadFrom(r)
+	}()
+
 	fn()
 
 	_ = w.Close()
-	var out bytes.Buffer
-	_, _ = out.ReadFrom(r)
+	<-done
 	os.Stdout = oldStdout
 
-	return out.String()
+	return buf.String()
 }
 
 func TestNewManCmd_RunE(t *testing.T) {
