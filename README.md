@@ -1,5 +1,10 @@
 # rss2socials
 
+**This repository has moved to [monogo](https://github.com/toozej/monogo).**
+
+
+
+
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/toozej/rss2socials)
 [![Go Report Card](https://goreportcard.com/badge/github.com/toozej/rss2socials)](https://goreportcard.com/report/github.com/toozej/rss2socials)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/toozej/rss2socials/cicd.yaml)
