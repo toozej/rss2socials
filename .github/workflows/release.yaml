@@ -83,11 +83,11 @@ jobs:
           name: dist
           path: ./dist/
       # After GoReleaser runs, attest all the files in ./dist/checksums.txt:
-      - uses: actions/attest-build-provenance@v4
+      - uses: actions/attest-build-provenance@v4.1.0
         with:
           subject-checksums: ./dist/checksums.txt
       # After GoReleaser runs, attest all the images in ./dist/digests.txt:
-      - uses: actions/attest-build-provenance@v4
+      - uses: actions/attest-build-provenance@v4.1.0
         with:
           subject-checksums: ./dist/digests.txt
 
